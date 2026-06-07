@@ -17,6 +17,8 @@ export default function StatusBar({ onSetTheme }: StatusBarProps) {
   const setActiveView = useStore((s) => s.setActiveView);
   const toggleMinimap = useStore((s) => s.toggleMinimap);
   const theme = useStore((s) => s.theme);
+  const testCases = useStore((s) => s.testCases);
+  const activeId = useStore((s) => s.activeTestCaseId);
 
   const handleStandardChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     if (!currentProblem) return;
@@ -27,12 +29,29 @@ export default function StatusBar({ onSetTheme }: StatusBarProps) {
     } catch { /* ignore */ }
   };
 
+  function tokensMatch(actual: string, expected: string): boolean {
+    return actual.trim().split(/\s+/).join(' ') === expected.trim().split(/\s+/).join(' ');
+  }
+
+  const activeCase = testCases.find(tc => tc.id === activeId);
+
+  const cleanExit = lastRunResult
+    && lastRunResult.compile_errors.length === 0
+    && !lastRunResult.timed_out
+    && lastRunResult.exit_code === 0;
+
+  const verdictText = cleanExit
+    ? (!activeCase?.expected
+        ? 'OK'
+        : tokensMatch(lastRunResult!.stdout ?? '', activeCase.expected) ? 'AC' : 'WA')
+    : null;
+
   const statusBadgeClass = isCompiling || isRunning
     ? 'badge badge-warning'
     : lastRunResult
-    ? lastRunResult.compile_errors.length > 0 || lastRunResult.timed_out || lastRunResult.exit_code !== 0
-      ? 'badge badge-error'
-      : 'badge badge-ok'
+    ? (cleanExit
+        ? (verdictText === 'AC' ? 'badge badge-ok' : verdictText === 'WA' ? 'badge badge-error' : 'badge badge-neutral')
+        : 'badge badge-error')
     : 'badge badge-neutral';
 
   const statusText = isCompiling
@@ -46,7 +65,7 @@ export default function StatusBar({ onSetTheme }: StatusBarProps) {
       ? 'TLE'
       : lastRunResult.exit_code !== 0
       ? `Exit ${lastRunResult.exit_code}`
-      : 'OK'
+      : (verdictText ?? 'OK')
     : 'Ready';
 
   return (
