@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTheme } from './hooks/useTheme';
 import { useKeyBindings } from './hooks/useKeyBindings';
 import { useStore } from './store/useStore';
@@ -22,6 +22,11 @@ export default function App() {
   const setActiveView = useStore((s) => s.setActiveView);
   const activeView = useStore((s) => s.activeView);
   const toggleMinimap = useStore((s) => s.toggleMinimap);
+  const testCases = useStore((s) => s.testCases);
+  const addTestCase = useStore((s) => s.addTestCase);
+  const problems = useStore((s) => s.problems);
+
+  const [showProblemList, setShowProblemList] = useState(false);
 
   // Apply theme to document root
   useEffect(() => {
@@ -32,13 +37,13 @@ export default function App() {
   useEffect(() => {
     const init = async () => {
       try {
-        const problems = await api.getProblems();
-        setProblems(problems);
+        const probs = await api.getProblems();
+        setProblems(probs);
 
         const lastId = await api.getSetting('last_opened_problem_id');
         const target = lastId
-          ? problems.find((p) => p.id === lastId)
-          : problems[0];
+          ? probs.find((p) => p.id === lastId)
+          : probs[0];
 
         if (target) {
           await loadProblem(target.id);
@@ -98,12 +103,74 @@ export default function App() {
       metaKey: true,
       handler: () => toggleMinimap(),
     },
+    {
+      key: 't',
+      metaKey: true,
+      handler: () => {
+        if (currentProblem) {
+          const name = `Case ${testCases.length + 1}`;
+          api.createTestCase(currentProblem.id, name, '').then((tc) => {
+            addTestCase(tc);
+            setActiveTestCaseId(tc.id);
+          }).catch(() => {});
+        }
+      },
+    },
+    {
+      key: 'o',
+      metaKey: true,
+      handler: () => setShowProblemList(true),
+    },
   ]);
 
   return (
     <>
       <Layout isDark={isDark} />
       <WorkspaceGenerator onOpen={loadProblem} />
+      {showProblemList && (
+        <div
+          onClick={() => setShowProblemList(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+            paddingTop: 80, zIndex: 300,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+              borderRadius: 8, width: 400, maxHeight: 400, overflow: 'auto',
+            }}
+          >
+            <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontSize: 12, color: 'var(--text-secondary)' }}>
+              Open Problem (↑↓ to navigate, Enter to open)
+            </div>
+            {problems.map((p) => (
+              <div
+                key={p.id}
+                onClick={() => { loadProblem(p.id); setShowProblemList(false); }}
+                style={{
+                  padding: '10px 14px', cursor: 'pointer', fontSize: 13,
+                  borderBottom: '1px solid var(--border)',
+                  background: p.id === currentProblem?.id ? 'var(--accent)' : 'transparent',
+                  color: p.id === currentProblem?.id ? 'white' : 'var(--text-primary)',
+                }}
+                onMouseEnter={(e) => { if (p.id !== currentProblem?.id) (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-tertiary)'; }}
+                onMouseLeave={(e) => { if (p.id !== currentProblem?.id) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+              >
+                <div>{p.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{p.path}</div>
+              </div>
+            ))}
+            {problems.length === 0 && (
+              <div style={{ padding: 16, color: 'var(--text-secondary)', fontSize: 13, textAlign: 'center' }}>
+                No problems yet. Press Cmd+N to create one.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
