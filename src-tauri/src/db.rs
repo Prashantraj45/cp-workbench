@@ -65,6 +65,31 @@ fn migrate(conn: &Connection) -> AppResult<()> {
         CREATE TABLE IF NOT EXISTS settings (
             key   TEXT PRIMARY KEY,
             value TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS tags (
+            id    TEXT PRIMARY KEY,
+            name  TEXT NOT NULL UNIQUE,
+            color TEXT NOT NULL DEFAULT '#58a6ff'
+        );
+
+        CREATE TABLE IF NOT EXISTS problem_tags (
+            problem_id TEXT NOT NULL REFERENCES problems(id) ON DELETE CASCADE,
+            tag_id     TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+            source     TEXT NOT NULL DEFAULT 'manual',
+            PRIMARY KEY (problem_id, tag_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS groups (
+            id         TEXT PRIMARY KEY,
+            name       TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS problem_group_memberships (
+            problem_id TEXT NOT NULL REFERENCES problems(id) ON DELETE CASCADE,
+            group_id   TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+            PRIMARY KEY (problem_id, group_id)
         );",
     )?;
     Ok(())
