@@ -45,6 +45,20 @@ pub struct CfProblem {
     pub samples: Vec<(String, String)>, // (input, output)
 }
 
+fn extract_sample_text(el: scraper::ElementRef) -> String {
+    // Try direct <pre> first (old CF format)
+    let pre_sel = Selector::parse("pre").unwrap();
+    if let Some(pre) = el.select(&pre_sel).next() {
+        return pre.text().collect::<Vec<_>>().join("");
+    }
+    // Fall back to .test-example-line spans (new CF format)
+    let line_sel = Selector::parse(".test-example-line").unwrap();
+    el.select(&line_sel)
+        .map(|line| line.text().collect::<String>())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 pub fn fetch_cf_problem(url: &str) -> AppResult<CfProblem> {
     let (contest_id, problem_id) = parse_cf_url(url)
         .ok_or_else(|| AppError::Generic(format!("Invalid Codeforces URL: {}", url)))?;
@@ -65,10 +79,10 @@ pub fn fetch_cf_problem(url: &str) -> AppResult<CfProblem> {
     let document = Html::parse_document(&html);
 
     // Title: div.title inside .problem-statement header
-    let title_sel = Selector::parse(".problem-statement .header .title").unwrap();
     let title = document
-        .select(&title_sel)
+        .select(&Selector::parse(".problem-statement .header .title").unwrap())
         .next()
+        .or_else(|| document.select(&Selector::parse(".title").unwrap()).next())
         .map(|e| e.text().collect::<String>().trim().to_string())
         .unwrap_or_else(|| format!("{}{}", contest_id, problem_id));
 
@@ -97,21 +111,20 @@ pub fn fetch_cf_problem(url: &str) -> AppResult<CfProblem> {
                 .and_then(|s| s.parse::<i64>().ok())
         });
 
-    // Sample test cases
-    let input_sel = Selector::parse(".sample-test .input pre").unwrap();
-    let output_sel = Selector::parse(".sample-test .output pre").unwrap();
-    let inputs: Vec<String> = document
-        .select(&input_sel)
-        .map(|e| e.text().collect::<String>())
-        .collect();
-    let outputs: Vec<String> = document
-        .select(&output_sel)
-        .map(|e| e.text().collect::<String>())
-        .collect();
-    let samples: Vec<(String, String)> = inputs
-        .into_iter()
-        .zip(outputs.into_iter())
-        .collect();
+    // Sample test cases — handle both old <pre> and new .test-example-line formats
+    let sample_sel = Selector::parse(".sample-test").unwrap();
+    let input_block_sel = Selector::parse(".input").unwrap();
+    let output_block_sel = Selector::parse(".output").unwrap();
+
+    let mut samples = Vec::new();
+    for sample in document.select(&sample_sel) {
+        if let (Some(inp), Some(out)) = (
+            sample.select(&input_block_sel).next(),
+            sample.select(&output_block_sel).next(),
+        ) {
+            samples.push((extract_sample_text(inp), extract_sample_text(out)));
+        }
+    }
 
     Ok(CfProblem {
         contest_id,
