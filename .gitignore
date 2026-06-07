@@ -1,0 +1,12 @@
+# Node
+node_modules/
+dist/
+
+# Rust / Cargo
+src-tauri/target/
+
+# OS
+.DS_Store
+
+# Vite
+*.local
