@@ -26,6 +26,10 @@ regex = "1"
 libc = "0.2"
 dirs = "5"
 
+[[test]]
+name = "feature_tests"
+path = "tests/feature_tests.rs"
+
 [profile.release]
 panic = "abort"
 codegen-units = 1

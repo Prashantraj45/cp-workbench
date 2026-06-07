@@ -122,21 +122,23 @@ class Canvas:
                     self.set(x, y, c)
 
     def to_png(self):
-        rows = []
+        # All rows must be compressed as ONE deflate stream (not per-row)
+        raw = bytearray()
         for row in self.px:
-            raw = b'\x00'
+            raw += b'\x00'          # filter type: None
             for px in row:
-                raw += bytes(px)
-            rows.append(zlib.compress(raw, 9))
-        idat = b''.join(rows)
+                raw += bytes(px)   # RGBA each pixel
+        compressed = zlib.compress(bytes(raw), 9)
+
         def chunk(t, d):
             c = struct.pack('>I', len(d)) + t + d
             return c + struct.pack('>I', zlib.crc32(t + d) & 0xffffffff)
-        sig = b'\x89PNG\r\n\x1a\n'
+
+        sig  = b'\x89PNG\r\n\x1a\n'
         ihdr = chunk(b'IHDR', struct.pack('>IIBBBBB', self.w, self.h, 8, 6, 0, 0, 0))
-        idat_chunk = chunk(b'IDAT', idat)
+        idat = chunk(b'IDAT', compressed)
         iend = chunk(b'IEND', b'')
-        return sig + ihdr + idat_chunk + iend
+        return sig + ihdr + idat + iend
 
 
 def make_icon(size):
