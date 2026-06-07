@@ -4,9 +4,11 @@ import type { RunResult } from '../lib/types';
 
 const STATUS_MAP = {
   ready:         { label: 'Ready',          cls: 'badge-neutral' },
-  compiling:     { label: 'Compiling...',   cls: 'badge-warning' },
-  running:       { label: 'Running...',     cls: 'badge-warning' },
+  compiling:     { label: 'Compiling…',     cls: 'badge-warning' },
+  running:       { label: 'Running…',       cls: 'badge-warning' },
+  ok:            { label: 'OK',             cls: 'badge-neutral' },
   success:       { label: 'AC',             cls: 'badge-ok'      },
+  wa:            { label: 'WA',             cls: 'badge-error'   },
   compile_error: { label: 'Compile Error',  cls: 'badge-error'   },
   runtime_error: { label: 'Runtime Error',  cls: 'badge-error'   },
   tle:           { label: 'TLE',            cls: 'badge-error'   },
@@ -14,14 +16,24 @@ const STATUS_MAP = {
 
 type RunStatus = keyof typeof STATUS_MAP;
 
-function getStatus(isCompiling: boolean, isRunning: boolean, result: RunResult | null): RunStatus {
+function tokensMatch(actual: string, expected: string): boolean {
+  return actual.trim().split(/\s+/).join(' ') === expected.trim().split(/\s+/).join(' ');
+}
+
+function getStatus(
+  isCompiling: boolean,
+  isRunning: boolean,
+  result: RunResult | null,
+  expected: string | null | undefined,
+): RunStatus {
   if (isCompiling) return 'compiling';
   if (isRunning)   return 'running';
   if (!result)     return 'ready';
   if (result.compile_errors.length > 0) return 'compile_error';
   if (result.timed_out) return 'tle';
   if (result.exit_code !== 0) return 'runtime_error';
-  return 'success';
+  if (!expected) return 'ok';
+  return tokensMatch(result.stdout, expected) ? 'success' : 'wa';
 }
 
 interface RunToolbarProps {
@@ -30,13 +42,16 @@ interface RunToolbarProps {
 }
 
 export default function RunToolbar({ onRun, onBuildOnly }: RunToolbarProps) {
-  const isCompiling = useStore(s => s.isCompiling);
-  const isRunning   = useStore(s => s.isRunning);
-  const lastResult  = useStore(s => s.lastRunResult);
+  const isCompiling    = useStore(s => s.isCompiling);
+  const isRunning      = useStore(s => s.isRunning);
+  const lastResult     = useStore(s => s.lastRunResult);
   const currentProblem = useStore(s => s.currentProblem);
+  const testCases      = useStore(s => s.testCases);
+  const activeId       = useStore(s => s.activeTestCaseId);
   const isActive = isCompiling || isRunning;
 
-  const status = getStatus(isCompiling, isRunning, lastResult);
+  const activeCase = testCases.find(tc => tc.id === activeId);
+  const status = getStatus(isCompiling, isRunning, lastResult, activeCase?.expected);
   const { label, cls } = STATUS_MAP[status];
 
   const handleStop = async () => {
