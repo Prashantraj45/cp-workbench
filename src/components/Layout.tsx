@@ -9,9 +9,10 @@ import StressTest from './StressTest';
 
 interface LayoutProps {
   isDark: boolean;
+  onRun: () => void;
 }
 
-export default function Layout({ isDark }: LayoutProps) {
+export default function Layout({ isDark, onRun }: LayoutProps) {
   const activeView = useStore((s) => s.activeView);
 
   const handleLayoutChange = async (sizes: number[]) => {
@@ -43,7 +44,7 @@ export default function Layout({ isDark }: LayoutProps) {
             autoSaveId="cp-workbench-layout"
           >
             <Panel defaultSize={65} minSize={40} id="code-panel">
-              <Editor isDark={isDark} />
+              <Editor isDark={isDark} onRun={onRun} />
             </Panel>
             <PanelResizeHandle
               style={{ width: 4, cursor: 'col-resize' }}

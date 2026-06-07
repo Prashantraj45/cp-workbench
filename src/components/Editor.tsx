@@ -1,26 +1,28 @@
-import MonacoEditor from '@monaco-editor/react';
+import MonacoEditor, { OnMount } from '@monaco-editor/react';
 import { useCallback, useEffect, useRef } from 'react';
+import * as monaco from 'monaco-editor';
 import { useStore } from '../store/useStore';
 import { api } from '../lib/tauri';
 
 interface EditorProps {
   isDark: boolean;
+  onRun: () => void;
 }
 
-export default function Editor({ isDark }: EditorProps) {
+export default function Editor({ isDark, onRun }: EditorProps) {
   const code = useStore((s) => s.code);
   const setCode = useStore((s) => s.setCode);
   const fontSize = useStore((s) => s.fontSize);
   const showMinimap = useStore((s) => s.showMinimap);
   const currentProblem = useStore((s) => s.currentProblem);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onRunRef = useRef(onRun);
+  onRunRef.current = onRun;
 
   const handleChange = useCallback(
     (value: string | undefined) => {
       const v = value ?? '';
       setCode(v);
-
-      // Autosave debounce 1s
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
       if (currentProblem) {
         autosaveTimer.current = setTimeout(async () => {
@@ -35,7 +37,15 @@ export default function Editor({ isDark }: EditorProps) {
     [setCode, currentProblem]
   );
 
-  // Cleanup timer on unmount
+  const handleMount: OnMount = (editor) => {
+    editor.addAction({
+      id: 'cp-run',
+      label: 'Run Solution',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
+      run: () => onRunRef.current(),
+    });
+  };
+
   useEffect(() => {
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
@@ -49,6 +59,7 @@ export default function Editor({ isDark }: EditorProps) {
         language="cpp"
         value={code}
         onChange={handleChange}
+        onMount={handleMount}
         theme={isDark ? 'vs-dark' : 'vs'}
         options={{
           fontSize,

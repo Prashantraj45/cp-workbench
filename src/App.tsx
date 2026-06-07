@@ -88,11 +88,6 @@ export default function App() {
   // Global key bindings
   useKeyBindings([
     {
-      key: 'Enter',
-      metaKey: true,
-      handler: () => handleRun(),
-    },
-    {
       key: 's',
       metaKey: true,
       shiftKey: true,
@@ -125,7 +120,7 @@ export default function App() {
 
   return (
     <>
-      <Layout isDark={isDark} />
+      <Layout isDark={isDark} onRun={handleRun} />
       <WorkspaceGenerator onOpen={loadProblem} />
       {showProblemList && (
         <div
