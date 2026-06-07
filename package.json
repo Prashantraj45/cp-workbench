@@ -9,7 +9,8 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@fontsource/jetbrains-mono": "^5.1.0",
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
     "@monaco-editor/react": "^4.6.0",
     "@tauri-apps/api": "^2.5.0",
     "monaco-editor": "^0.52.0",
