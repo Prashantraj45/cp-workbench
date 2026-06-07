@@ -49,7 +49,7 @@ fn extract_sample_text(el: scraper::ElementRef) -> String {
     // Try direct <pre> first (old CF format)
     let pre_sel = Selector::parse("pre").unwrap();
     if let Some(pre) = el.select(&pre_sel).next() {
-        return pre.text().collect::<Vec<_>>().join("");
+        return pre.text().collect::<Vec<_>>().join("").trim().to_string();
     }
     // Fall back to .test-example-line spans (new CF format)
     let line_sel = Selector::parse(".test-example-line").unwrap();
@@ -57,6 +57,8 @@ fn extract_sample_text(el: scraper::ElementRef) -> String {
         .map(|line| line.text().collect::<String>())
         .collect::<Vec<_>>()
         .join("\n")
+        .trim()
+        .to_string()
 }
 
 pub fn fetch_cf_problem(url: &str) -> AppResult<CfProblem> {
