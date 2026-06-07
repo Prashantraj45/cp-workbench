@@ -67,3 +67,17 @@ pub struct StressResult {
     pub expected: String,
     pub actual: String,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Tag {
+    pub id: String,
+    pub name: String,
+    pub color: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Group {
+    pub id: String,
+    pub name: String,
+    pub created_at: i64,
+}
