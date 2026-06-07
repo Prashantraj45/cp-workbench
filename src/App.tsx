@@ -5,10 +5,13 @@ import { useStore } from './store/useStore';
 import { api } from './lib/tauri';
 import Layout from './components/Layout';
 import WorkspaceGenerator from './components/WorkspaceGenerator';
+import DataManagement from './components/DataManagement';
 import './index.css';
 
 export default function App() {
-  const { isDark } = useTheme();
+  const { isDark: systemDark } = useTheme();
+  const theme = useStore((s) => s.theme);
+  const setTheme = useStore((s) => s.setTheme);
   const setCurrentProblem = useStore((s) => s.setCurrentProblem);
   const setCode = useStore((s) => s.setCode);
   const setProblems = useStore((s) => s.setProblems);
@@ -24,33 +27,34 @@ export default function App() {
   const toggleMinimap = useStore((s) => s.toggleMinimap);
   const testCases = useStore((s) => s.testCases);
   const addTestCase = useStore((s) => s.addTestCase);
-  const problems = useStore((s) => s.problems);
 
-  const [showProblemList, setShowProblemList] = useState(false);
+  const [showDataView, setShowDataView] = useState(false);
+
+  // Compute effective dark mode from theme setting
+  const isDark = theme === 'system' ? systemDark : theme === 'dark';
 
   // Apply theme to document root
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
   }, [isDark]);
 
-  // Session recovery: load last opened problem on startup
+  // Session recovery on startup
   useEffect(() => {
     const init = async () => {
       try {
+        // Restore saved theme
+        const savedTheme = await api.getSetting('theme').catch(() => null);
+        if (savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'system') {
+          setTheme(savedTheme);
+        }
+
         const probs = await api.getProblems();
         setProblems(probs);
 
-        const lastId = await api.getSetting('last_opened_problem_id');
-        const target = lastId
-          ? probs.find((p) => p.id === lastId)
-          : probs[0];
-
-        if (target) {
-          await loadProblem(target.id);
-        }
-      } catch {
-        // fresh start
-      }
+        const lastId = await api.getSetting('last_opened_problem_id').catch(() => null);
+        const target = lastId ? probs.find((p) => p.id === lastId) : probs[0];
+        if (target) await loadProblem(target.id);
+      } catch { /* fresh start */ }
     };
     init();
   }, []);
@@ -67,9 +71,7 @@ export default function App() {
       setTestCases(cases);
       setActiveTestCaseId(cases[0]?.id ?? null);
       await api.setSetting('last_opened_problem_id', id);
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   };
 
   const handleRun = async () => {
@@ -85,7 +87,26 @@ export default function App() {
     }
   };
 
-  // Global key bindings
+  const handleBuildOnly = async () => {
+    if (!currentProblem) return;
+    setCompiling(true);
+    setLastRunResult(null);
+    try {
+      // Run with empty input and a very short timeout — we only care about compile result
+      const result = await api.runSolution(currentProblem.id, activeTestCaseId ?? '');
+      setLastRunResult(result);
+    } finally {
+      setCompiling(false);
+      setRunning(false);
+    }
+  };
+
+  const handleSetTheme = async (t: 'system' | 'dark' | 'light') => {
+    setTheme(t);
+    try { await api.setSetting('theme', t); } catch { /* ignore */ }
+  };
+
+  // Global key bindings (Cmd+Enter is handled by Monaco addAction in Editor)
   useKeyBindings([
     {
       key: 's',
@@ -112,59 +133,34 @@ export default function App() {
       },
     },
     {
-      key: 'o',
+      key: 'n',
       metaKey: true,
-      handler: () => setShowProblemList(true),
+      handler: () => {
+        // WorkspaceGenerator listens on its own via Cmd+N
+      },
     },
   ]);
 
   return (
     <>
-      <Layout isDark={isDark} onRun={handleRun} />
+      <Layout
+        isDark={isDark}
+        onRun={handleRun}
+        onBuildOnly={handleBuildOnly}
+        onSetTheme={handleSetTheme}
+        onOpenProblem={(id) => loadProblem(id)}
+        onNewProblem={() => {
+          // Trigger WorkspaceGenerator via custom event
+          window.dispatchEvent(new CustomEvent('cp:new-problem'));
+        }}
+        onDataView={() => setShowDataView(true)}
+      />
       <WorkspaceGenerator onOpen={loadProblem} />
-      {showProblemList && (
-        <div
-          onClick={() => setShowProblemList(false)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-            paddingTop: 80, zIndex: 300,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-              borderRadius: 8, width: 400, maxHeight: 400, overflow: 'auto',
-            }}
-          >
-            <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontSize: 12, color: 'var(--text-secondary)' }}>
-              Open Problem (↑↓ to navigate, Enter to open)
-            </div>
-            {problems.map((p) => (
-              <div
-                key={p.id}
-                onClick={() => { loadProblem(p.id); setShowProblemList(false); }}
-                style={{
-                  padding: '10px 14px', cursor: 'pointer', fontSize: 13,
-                  borderBottom: '1px solid var(--border)',
-                  background: p.id === currentProblem?.id ? 'var(--accent)' : 'transparent',
-                  color: p.id === currentProblem?.id ? 'white' : 'var(--text-primary)',
-                }}
-                onMouseEnter={(e) => { if (p.id !== currentProblem?.id) (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-tertiary)'; }}
-                onMouseLeave={(e) => { if (p.id !== currentProblem?.id) (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
-              >
-                <div>{p.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{p.path}</div>
-              </div>
-            ))}
-            {problems.length === 0 && (
-              <div style={{ padding: 16, color: 'var(--text-secondary)', fontSize: 13, textAlign: 'center' }}>
-                No problems yet. Press Cmd+N to create one.
-              </div>
-            )}
-          </div>
-        </div>
+      {showDataView && (
+        <DataManagement
+          onClose={() => setShowDataView(false)}
+          onOpenProblem={(id) => { loadProblem(id); setShowDataView(false); }}
+        />
       )}
     </>
   );

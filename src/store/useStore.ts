@@ -23,6 +23,9 @@ interface AppState {
   // Layout
   activeView: 'main' | 'stress';
 
+  // Theme
+  theme: 'system' | 'dark' | 'light';
+
   // Stress test state
   stressRunning: boolean;
   stressResult: StressResult | null;
@@ -39,6 +42,7 @@ interface AppState {
   setRunning: (v: boolean) => void;
   setLastRunResult: (result: RunResult | null) => void;
   setActiveView: (view: 'main' | 'stress') => void;
+  setTheme: (t: 'system' | 'dark' | 'light') => void;
   setStressRunning: (v: boolean) => void;
   setStressResult: (result: StressResult | null) => void;
   updateTestCase: (updated: TestCase) => void;
@@ -58,6 +62,7 @@ export const useStore = create<AppState>((set) => ({
   isRunning: false,
   lastRunResult: null,
   activeView: 'main',
+  theme: 'system',
   stressRunning: false,
   stressResult: null,
 
@@ -72,6 +77,7 @@ export const useStore = create<AppState>((set) => ({
   setRunning: (isRunning) => set({ isRunning }),
   setLastRunResult: (lastRunResult) => set({ lastRunResult }),
   setActiveView: (activeView) => set({ activeView }),
+  setTheme: (theme) => set({ theme }),
   setStressRunning: (stressRunning) => set({ stressRunning }),
   setStressResult: (stressResult) => set({ stressResult }),
   updateTestCase: (updated) =>

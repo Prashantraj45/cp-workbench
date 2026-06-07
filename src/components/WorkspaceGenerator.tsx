@@ -51,8 +51,13 @@ export default function WorkspaceGenerator({ onOpen }: WorkspaceGeneratorProps) 
       }
       if (e.key === 'Escape') setOpen(false);
     };
+    const openHandler = () => setOpen(true);
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    window.addEventListener('cp:new-problem', openHandler);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      window.removeEventListener('cp:new-problem', openHandler);
+    };
   }, []);
 
   const handleSubmit = useCallback(async () => {
