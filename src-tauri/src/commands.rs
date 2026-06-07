@@ -260,3 +260,27 @@ pub fn ai_generate_tests(_problem_id: String) -> AppResult<String> {
 pub fn ai_optimize(_code: String) -> AppResult<String> {
     Ok(String::new())
 }
+
+// ── Process control ────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn stop_process() -> AppResult<()> {
+    runner::stop_running_process();
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_problem(id: String) -> AppResult<()> {
+    let conn = db::open()?;
+    conn.execute("DELETE FROM test_cases WHERE problem_id=?1", rusqlite::params![id])?;
+    conn.execute("DELETE FROM runs WHERE problem_id=?1", rusqlite::params![id])?;
+    conn.execute("DELETE FROM problems WHERE id=?1", rusqlite::params![id])?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn rename_problem(id: String, name: String) -> AppResult<()> {
+    let conn = db::open()?;
+    conn.execute("UPDATE problems SET name=?1 WHERE id=?2", rusqlite::params![name, id])?;
+    Ok(())
+}

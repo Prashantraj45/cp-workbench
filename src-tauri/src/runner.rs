@@ -5,6 +5,9 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 use std::io::Write;
+use std::sync::Mutex;
+
+static RUNNING_PID: Mutex<Option<u32>> = Mutex::new(None);
 
 const DEFAULT_TIMEOUT_MS: u64 = 10_000;
 
@@ -43,6 +46,11 @@ pub fn run_solution(
         .stderr(Stdio::piped())
         .spawn()?;
 
+    // Track PID for stop_process
+    if let Ok(mut pid_guard) = RUNNING_PID.lock() {
+        *pid_guard = Some(child.id());
+    }
+
     // Write stdin
     if let Some(mut stdin) = child.stdin.take() {
         let _ = stdin.write_all(input_owned.as_bytes());
@@ -70,6 +78,11 @@ pub fn run_solution(
                 std::thread::sleep(Duration::from_millis(5));
             }
         }
+    }
+
+    // Clear PID tracking
+    if let Ok(mut pid_guard) = RUNNING_PID.lock() {
+        *pid_guard = None;
     }
 
     let runtime_ms = start.elapsed().as_millis() as u64;
@@ -102,6 +115,15 @@ pub fn run_solution(
         compile_errors: compile_result.errors,
         timed_out,
     })
+}
+
+pub fn stop_running_process() {
+    if let Ok(mut pid_guard) = RUNNING_PID.lock() {
+        if let Some(pid) = *pid_guard {
+            unsafe { libc::kill(pid as i32, libc::SIGTERM); }
+            *pid_guard = None;
+        }
+    }
 }
 
 fn get_peak_memory_kb() -> u64 {

@@ -33,6 +33,9 @@ pub fn run() {
             commands::ai_complexity,
             commands::ai_generate_tests,
             commands::ai_optimize,
+            commands::stop_process,
+            commands::delete_problem,
+            commands::rename_problem,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

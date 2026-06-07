@@ -49,4 +49,9 @@ export const api = {
   aiComplexity: (code: string) => invoke<string>('ai_complexity', { code }),
   aiGenerateTests: (problemId: string) => invoke<string>('ai_generate_tests', { problemId }),
   aiOptimize: (code: string) => invoke<string>('ai_optimize', { code }),
+
+  // Process control
+  stopProcess: () => invoke<void>('stop_process'),
+  deleteProblem: (id: string) => invoke<void>('delete_problem', { id }),
+  renameProblem: (id: string, name: string) => invoke<void>('rename_problem', { id, name }),
 };
