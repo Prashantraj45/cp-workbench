@@ -33,7 +33,7 @@ function getStatus(
   if (result.timed_out) return 'tle';
   if (result.exit_code !== 0) return 'runtime_error';
   if (!expected) return 'ok';
-  return tokensMatch(result.stdout, expected) ? 'success' : 'wa';
+  return tokensMatch(result.stdout ?? '', expected) ? 'success' : 'wa';
 }
 
 interface RunToolbarProps {
