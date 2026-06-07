@@ -144,120 +144,48 @@ class Canvas:
 def make_icon(size):
     s = size
     c = Canvas(s, s)
-    sc = s / 1024  # scale factor
+    sc = s / 512
 
-    def S(v):  # scale a 1024-unit value
-        return int(v * sc)
+    def S(v): return max(1, int(v * sc))
 
-    # ── Background gradient ────────────────────────────────────────────────────
+    BG_COLOR   = (10,  15,  30, 255)   # #0a0f1e deep navy
+    CARD_COLOR = (16,  24,  48, 255)   # #101830 card
+    TEAL_COLOR = (0,  200, 180, 255)   # accent teal
+    WHITE_COLOR = (230, 237, 243, 255)
+
+    # Full background
     for y in range(s):
         for x in range(s):
-            t = (x + y) / (2 * s)
-            r = int(lerp(10, 18, t))
-            g = int(lerp(13, 22, t))
-            b = int(lerp(20, 35, t))
-            c.px[y][x] = (r, g, b, 255)
+            c.px[y][x] = BG_COLOR
 
-    # ── Main card with rounded corners ────────────────────────────────────────
-    pad = S(60)
-    r_card = S(120)
-    c.fill_rounded_rect(pad, pad, s-pad, s-pad, r_card, (22, 28, 42, 255))
+    # Rounded card
+    margin = S(32)
+    c.fill_rounded_rect(margin, margin, s-margin, s-margin, S(64), CARD_COLOR)
 
-    # ── Top bar (title bar simulation) ────────────────────────────────────────
-    bar_h = S(80)
-    c.fill_rounded_rect(pad, pad, s-pad, pad+bar_h, r_card, (28, 35, 52, 255))
+    # Teal accent stripe bottom-left corner
+    accent_w = S(120); accent_h = S(8)
+    c.fill_rounded_rect(margin, s-margin-accent_h, margin+accent_w, s-margin, S(4), TEAL_COLOR)
 
-    # Traffic-light dots in top bar
-    dot_y = pad + S(40)
-    dot_r = S(14)
-    c.draw_circle(pad + S(45), dot_y, dot_r, (255, 95, 87, 220))
-    c.draw_circle(pad + S(85), dot_y, dot_r, (255, 189, 46, 220))
-    c.draw_circle(pad + S(125), dot_y, dot_r, (39, 201, 63, 220))
+    # "C" letter — two horizontal bars + left vertical bar
+    cx = int(s * 0.35)  # center of C
+    cy = int(s * 0.50)
+    bar_h = S(28); bar_w = S(70); vert_h = S(110); vert_w = S(28)
 
-    # ── Code lines (decorative) ───────────────────────────────────────────────
-    line_x = pad + S(50)
-    line_y_start = pad + bar_h + S(45)
-    line_gap = S(52)
-    line_colors = [
-        (TEAL[0], TEAL[1], TEAL[2], 200),   # keyword
-        (WHITE[0], WHITE[1], WHITE[2], 160), # normal
-        (WHITE[0], WHITE[1], WHITE[2], 140),
-        (GOLD[0], GOLD[1], GOLD[2], 180),    # string
-        (WHITE[0], WHITE[1], WHITE[2], 100),
-    ]
-    line_widths = [S(180), S(280), S(320), S(220), S(150)]
-    for i, (lc, lw) in enumerate(zip(line_colors, line_widths)):
-        ly = line_y_start + i * line_gap
-        c.fill_rect(line_x, ly, line_x + lw, ly + S(18), lc)
+    # Top bar
+    c.fill_rounded_rect(cx - S(10), cy - S(55), cx + bar_w, cy - S(55) + bar_h, S(8), WHITE_COLOR)
+    # Bottom bar
+    c.fill_rounded_rect(cx - S(10), cy + S(27), cx + bar_w, cy + S(27) + bar_h, S(8), WHITE_COLOR)
+    # Left vertical
+    c.fill_rounded_rect(cx - S(38), cy - S(55), cx - S(38) + vert_w, cy + S(27) + bar_h, S(8), WHITE_COLOR)
 
-    # indent second level
-    for i, (lc, lw) in enumerate(zip(
-        [(WHITE[0],WHITE[1],WHITE[2],130), (GOLD[0],GOLD[1],GOLD[2],160)],
-        [S(240), S(190)]
-    )):
-        ly = line_y_start + (i+2) * line_gap
-        c.fill_rect(line_x + S(40), ly, line_x + S(40) + lw, ly + S(18), lc)
-
-    # ── Big "CP" glyph overlay ────────────────────────────────────────────────
-    # Draw stylized ">" bracket in teal, center-right area
-    bx = s // 2 + S(60)
-    by = s // 2 + S(30)
-    bsize = S(220)
-    thick = max(2, S(28))
-
-    # ">" shape: two lines meeting at a point
-    tip_x = bx + bsize // 2
-    tip_y = by
-    top_x = bx - bsize // 3
-    top_y = by - bsize // 2
-    bot_x = bx - bsize // 3
-    bot_y = by + bsize // 2
-
-    # Glow effect: draw larger, more transparent version first
-    for glow_t in range(3, 0, -1):
-        ga = 40 * glow_t
-        gt = thick + glow_t * S(8)
-        tc = rgba(TEAL[0], TEAL[1], TEAL[2], ga)
-        c.draw_line(top_x, top_y, tip_x, tip_y, tc, gt)
-        c.draw_line(bot_x, bot_y, tip_x, tip_y, tc, gt)
-
-    # Solid bracket
-    tc_solid = rgba(TEAL[0], TEAL[1], TEAL[2], 255)
-    c.draw_line(top_x, top_y, tip_x, tip_y, tc_solid, thick)
-    c.draw_line(bot_x, bot_y, tip_x, tip_y, tc_solid, thick)
-
-    # ── Lightning bolt (speed / performance) ─────────────────────────────────
-    # Position: bottom-right of bracket
-    lx = s // 2 + S(10)
-    ly = s // 2 + S(80)
-    lh = S(130)
-    lw2 = S(65)
-
-    bolt = [
-        (lx + lw2//2, ly),
-        (lx, ly + lh//2),
-        (lx + lw2//2, ly + lh//2),
-        (lx - lw2//4, ly + lh),
-        (lx + lw2, ly + lh//2),
-        (lx + lw2//2, ly + lh//2),
-    ]
-
-    # Glow
-    for glow_t in range(3, 0, -1):
-        ga = 35 * glow_t
-        gc = rgba(GOLD[0], GOLD[1], GOLD[2], ga)
-        expanded = [(x + (-glow_t*S(4) if x < lx+lw2//2 else glow_t*S(4)),
-                     y + (-glow_t*S(4) if y < ly+lh//2 else glow_t*S(4))) for x,y in bolt]
-        c.fill_polygon(expanded, gc)
-
-    c.fill_polygon(bolt, rgba(GOLD[0], GOLD[1], GOLD[2], 240))
-
-    # ── Teal border glow on card edge ─────────────────────────────────────────
-    for bw in range(3, 0, -1):
-        ba = 30 * bw
-        # just top/left edges for subtle effect
-        c.fill_rect(pad, pad, pad+bw, s-pad, rgba(TEAL[0], TEAL[1], TEAL[2], ba))
-        c.fill_rect(pad, pad, s-pad, pad+bw, rgba(TEAL[0], TEAL[1], TEAL[2], ba))
+    # "P" letter — vertical bar + top bump
+    px2 = int(s * 0.60)
+    # Vertical bar
+    c.fill_rounded_rect(px2 - S(38), cy - S(55), px2 - S(38) + vert_w, cy + S(55), S(8), WHITE_COLOR)
+    # Top half circle (as rounded rect)
+    c.fill_rounded_rect(px2 - S(38), cy - S(55), px2 + S(42), cy + S(5), S(20), WHITE_COLOR)
+    # Inner cutout (bg color)
+    c.fill_rounded_rect(px2 - S(10), cy - S(37), px2 + S(24), cy - S(7), S(10), CARD_COLOR)
 
     return c.to_png()
 
