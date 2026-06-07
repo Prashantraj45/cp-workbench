@@ -1,6 +1,8 @@
+mod compiler;
 mod db;
 mod error;
 mod models;
+mod runner;
 
 pub fn run() {
     tauri::Builder::default()
