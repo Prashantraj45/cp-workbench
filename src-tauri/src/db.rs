@@ -296,13 +296,15 @@ pub fn get_problem_tags(conn: &Connection, problem_id: &str) -> AppResult<Vec<Ta
 }
 
 pub fn set_problem_tags(conn: &Connection, problem_id: &str, tag_ids: &[String]) -> AppResult<()> {
-    conn.execute("DELETE FROM problem_tags WHERE problem_id=?1", params![problem_id])?;
+    let tx = conn.unchecked_transaction()?;
+    tx.execute("DELETE FROM problem_tags WHERE problem_id=?1", params![problem_id])?;
     for tag_id in tag_ids {
-        conn.execute(
+        tx.execute(
             "INSERT OR IGNORE INTO problem_tags (problem_id, tag_id, source) VALUES (?1, ?2, 'manual')",
             params![problem_id, tag_id],
         )?;
     }
+    tx.commit()?;
     Ok(())
 }
 
@@ -311,28 +313,17 @@ pub fn set_problem_tags(conn: &Connection, problem_id: &str, tag_ids: &[String])
 pub fn insert_scraped_tags(conn: &Connection, problem_id: &str, tag_names: &[String]) -> AppResult<()> {
     for name in tag_names {
         if name.is_empty() { continue; }
-        let existing: Option<String> = conn.query_row(
+        // Upsert tag by name
+        let new_id = uuid::Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO tags (id, name, color) VALUES (?1, ?2, '#58a6ff') ON CONFLICT(name) DO NOTHING",
+            params![new_id, name],
+        )?;
+        let tag_id: String = conn.query_row(
             "SELECT id FROM tags WHERE name=?1",
             params![name],
             |r| r.get(0),
-        ).optional()?;
-
-        let tag_id = match existing {
-            Some(id) => id,
-            None => {
-                let id = uuid::Uuid::new_v4().to_string();
-                conn.execute(
-                    "INSERT OR IGNORE INTO tags (id, name, color) VALUES (?1, ?2, '#58a6ff')",
-                    params![id, name],
-                )?;
-                conn.query_row(
-                    "SELECT id FROM tags WHERE name=?1",
-                    params![name],
-                    |r| r.get(0),
-                )?
-            }
-        };
-
+        )?;
         conn.execute(
             "INSERT OR IGNORE INTO problem_tags (problem_id, tag_id, source) VALUES (?1, ?2, 'scraped')",
             params![problem_id, tag_id],
@@ -380,13 +371,15 @@ pub fn get_group_members(conn: &Connection, group_id: &str) -> AppResult<Vec<Str
 }
 
 pub fn set_group_members(conn: &Connection, group_id: &str, problem_ids: &[String]) -> AppResult<()> {
-    conn.execute("DELETE FROM problem_group_memberships WHERE group_id=?1", params![group_id])?;
+    let tx = conn.unchecked_transaction()?;
+    tx.execute("DELETE FROM problem_group_memberships WHERE group_id=?1", params![group_id])?;
     for problem_id in problem_ids {
-        conn.execute(
+        tx.execute(
             "INSERT OR IGNORE INTO problem_group_memberships (problem_id, group_id) VALUES (?1, ?2)",
             params![problem_id, group_id],
         )?;
     }
+    tx.commit()?;
     Ok(())
 }
 
