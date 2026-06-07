@@ -1,6 +1,6 @@
 use crate::error::AppResult;
-use crate::models::{Problem, Run, TestCase};
-use rusqlite::{Connection, params};
+use crate::models::{Problem, Run, Tag, Group, TestCase};
+use rusqlite::{Connection, OptionalExtension, params};
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -256,4 +256,144 @@ pub fn set_setting(conn: &Connection, key: &str, value: &str) -> AppResult<()> {
         params![key, value],
     )?;
     Ok(())
+}
+
+// ── Tags ───────────────────────────────────────────────────────────────────────
+
+pub fn get_all_tags(conn: &Connection) -> AppResult<Vec<Tag>> {
+    let mut stmt = conn.prepare("SELECT id,name,color FROM tags ORDER BY name ASC")?;
+    let rows = stmt.query_map([], |row| {
+        Ok(Tag { id: row.get(0)?, name: row.get(1)?, color: row.get(2)? })
+    })?;
+    rows.map(|r| r.map_err(Into::into)).collect()
+}
+
+pub fn create_tag(conn: &Connection, name: &str, color: &str) -> AppResult<Tag> {
+    let id = uuid::Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO tags (id, name, color) VALUES (?1, ?2, ?3)",
+        params![id, name, color],
+    )?;
+    Ok(Tag { id, name: name.to_string(), color: color.to_string() })
+}
+
+pub fn delete_tag(conn: &Connection, id: &str) -> AppResult<()> {
+    conn.execute("DELETE FROM tags WHERE id=?1", params![id])?;
+    Ok(())
+}
+
+pub fn get_problem_tags(conn: &Connection, problem_id: &str) -> AppResult<Vec<Tag>> {
+    let mut stmt = conn.prepare(
+        "SELECT t.id, t.name, t.color FROM tags t
+         JOIN problem_tags pt ON pt.tag_id = t.id
+         WHERE pt.problem_id = ?1
+         ORDER BY t.name ASC"
+    )?;
+    let rows = stmt.query_map(params![problem_id], |row| {
+        Ok(Tag { id: row.get(0)?, name: row.get(1)?, color: row.get(2)? })
+    })?;
+    rows.map(|r| r.map_err(Into::into)).collect()
+}
+
+pub fn set_problem_tags(conn: &Connection, problem_id: &str, tag_ids: &[String]) -> AppResult<()> {
+    conn.execute("DELETE FROM problem_tags WHERE problem_id=?1", params![problem_id])?;
+    for tag_id in tag_ids {
+        conn.execute(
+            "INSERT OR IGNORE INTO problem_tags (problem_id, tag_id, source) VALUES (?1, ?2, 'manual')",
+            params![problem_id, tag_id],
+        )?;
+    }
+    Ok(())
+}
+
+/// Upsert tags by name (create if not exists) and attach to problem with source='scraped'.
+/// Called from scaffold functions. Failures are caught by caller.
+pub fn insert_scraped_tags(conn: &Connection, problem_id: &str, tag_names: &[String]) -> AppResult<()> {
+    for name in tag_names {
+        if name.is_empty() { continue; }
+        let existing: Option<String> = conn.query_row(
+            "SELECT id FROM tags WHERE name=?1",
+            params![name],
+            |r| r.get(0),
+        ).optional()?;
+
+        let tag_id = match existing {
+            Some(id) => id,
+            None => {
+                let id = uuid::Uuid::new_v4().to_string();
+                conn.execute(
+                    "INSERT OR IGNORE INTO tags (id, name, color) VALUES (?1, ?2, '#58a6ff')",
+                    params![id, name],
+                )?;
+                conn.query_row(
+                    "SELECT id FROM tags WHERE name=?1",
+                    params![name],
+                    |r| r.get(0),
+                )?
+            }
+        };
+
+        conn.execute(
+            "INSERT OR IGNORE INTO problem_tags (problem_id, tag_id, source) VALUES (?1, ?2, 'scraped')",
+            params![problem_id, tag_id],
+        )?;
+    }
+    Ok(())
+}
+
+// ── Groups ─────────────────────────────────────────────────────────────────────
+
+pub fn get_all_groups(conn: &Connection) -> AppResult<Vec<Group>> {
+    let mut stmt = conn.prepare("SELECT id,name,created_at FROM groups ORDER BY created_at DESC")?;
+    let rows = stmt.query_map([], |row| {
+        Ok(Group { id: row.get(0)?, name: row.get(1)?, created_at: row.get(2)? })
+    })?;
+    rows.map(|r| r.map_err(Into::into)).collect()
+}
+
+pub fn create_group(conn: &Connection, name: &str) -> AppResult<Group> {
+    let id = uuid::Uuid::new_v4().to_string();
+    let created_at = now_ms();
+    conn.execute(
+        "INSERT INTO groups (id, name, created_at) VALUES (?1, ?2, ?3)",
+        params![id, name, created_at],
+    )?;
+    Ok(Group { id, name: name.to_string(), created_at })
+}
+
+pub fn delete_group(conn: &Connection, id: &str) -> AppResult<()> {
+    conn.execute("DELETE FROM groups WHERE id=?1", params![id])?;
+    Ok(())
+}
+
+pub fn rename_group(conn: &Connection, id: &str, name: &str) -> AppResult<()> {
+    conn.execute("UPDATE groups SET name=?1 WHERE id=?2", params![name, id])?;
+    Ok(())
+}
+
+pub fn get_group_members(conn: &Connection, group_id: &str) -> AppResult<Vec<String>> {
+    let mut stmt = conn.prepare(
+        "SELECT problem_id FROM problem_group_memberships WHERE group_id=?1"
+    )?;
+    let rows = stmt.query_map(params![group_id], |row| row.get(0))?;
+    rows.map(|r| r.map_err(Into::into)).collect()
+}
+
+pub fn set_group_members(conn: &Connection, group_id: &str, problem_ids: &[String]) -> AppResult<()> {
+    conn.execute("DELETE FROM problem_group_memberships WHERE group_id=?1", params![group_id])?;
+    for problem_id in problem_ids {
+        conn.execute(
+            "INSERT OR IGNORE INTO problem_group_memberships (problem_id, group_id) VALUES (?1, ?2)",
+            params![problem_id, group_id],
+        )?;
+    }
+    Ok(())
+}
+
+pub fn get_run_count(conn: &Connection, problem_id: &str) -> AppResult<i64> {
+    conn.query_row(
+        "SELECT COUNT(*) FROM runs WHERE problem_id=?1",
+        params![problem_id],
+        |r| r.get(0),
+    ).map_err(Into::into)
 }
