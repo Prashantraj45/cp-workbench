@@ -25,6 +25,7 @@ pub fn run() {
             commands::save_code,
             commands::load_code,
             commands::run_stress_test,
+            commands::save_stress_file,
             commands::get_setting,
             commands::set_setting,
             commands::get_template,

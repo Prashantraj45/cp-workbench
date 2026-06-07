@@ -181,6 +181,22 @@ pub fn run_stress_test(
     crate::stress::run_stress(&gen, &brute, &solution, &standard, max_iterations, |_| {})
 }
 
+// ── Stress File Save ───────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn save_stress_file(problem_id: String, filename: String, content: String) -> AppResult<()> {
+    let allowed = ["gen.cpp", "brute.cpp"];
+    if !allowed.contains(&filename.as_str()) {
+        return Err(crate::error::AppError::Generic(format!("Not allowed: {}", filename)));
+    }
+    let conn = db::open()?;
+    let problem = db::get_problem(&conn, &problem_id)?
+        .ok_or_else(|| crate::error::AppError::Generic(format!("Problem {} not found", problem_id)))?;
+    let path = Path::new(&problem.path).join(&filename);
+    std::fs::write(path, content)?;
+    Ok(())
+}
+
 // ── Settings ───────────────────────────────────────────────────────────────────
 
 #[tauri::command]

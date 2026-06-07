@@ -33,6 +33,8 @@ export const api = {
   // Stress
   runStressTest: (problemId: string, maxIterations: number, standard: string) =>
     invoke<StressResult>('run_stress_test', { problem_id: problemId, max_iterations: maxIterations, standard }),
+  saveStressFile: (problemId: string, filename: string, content: string) =>
+    invoke<void>('save_stress_file', { problem_id: problemId, filename, content }),
 
   // Settings
   getSetting: (key: string) => invoke<string | null>('get_setting', { key }),
