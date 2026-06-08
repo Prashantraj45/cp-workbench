@@ -183,7 +183,7 @@ export default function DataManagement({ onClose, onOpenProblem }: DataManagemen
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', zIndex: 200 }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
         <span style={{ fontWeight: 500, fontSize: 14 }}>Data &amp; History</span>
         <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
           {filtered.length} / {problems.length} problems
@@ -194,7 +194,7 @@ export default function DataManagement({ onClose, onOpenProblem }: DataManagemen
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Left: Filter panel */}
-        <div style={{ width: 220, borderRight: '1px solid var(--border)', overflowY: 'auto', padding: '16px 12px', flexShrink: 0 }}>
+        <div style={{ width: 220, borderRight: '1px solid var(--border-subtle)', overflowY: 'auto', padding: '16px 12px', flexShrink: 0 }}>
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 500 }}>PLATFORM</div>
           {platforms.map(p => (
             <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontSize: 12, cursor: 'pointer' }}>
@@ -203,7 +203,7 @@ export default function DataManagement({ onClose, onOpenProblem }: DataManagemen
             </label>
           ))}
 
-          <div style={{ height: 1, background: 'var(--border)', margin: '12px 0' }} />
+          <div style={{ height: 1, background: 'var(--border-subtle)', margin: '12px 0' }} />
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>TAGS</span>
@@ -220,7 +220,7 @@ export default function DataManagement({ onClose, onOpenProblem }: DataManagemen
           ))}
           {tags.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>No tags yet</div>}
 
-          <div style={{ height: 1, background: 'var(--border)', margin: '12px 0' }} />
+          <div style={{ height: 1, background: 'var(--border-subtle)', margin: '12px 0' }} />
 
           <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 500 }}>GROUPS</div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontSize: 12, cursor: 'pointer' }}>
@@ -318,7 +318,7 @@ export default function DataManagement({ onClose, onOpenProblem }: DataManagemen
               </div>
 
               {groupManagerProblemId === p.id && (
-                <div style={{ padding: '0 16px 12px 16px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ padding: '0 16px 12px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
                   <GroupManager
                     problemId={p.id}
                     currentGroupIds={p.groupIds}

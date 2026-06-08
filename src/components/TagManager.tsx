@@ -47,7 +47,7 @@ export default function TagManager({ tags, onClose, onChanged }: TagManagerProps
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, padding: 20, width: 400, maxWidth: '90vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+        style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 8, padding: 20, width: 400, maxWidth: '90vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
           <span style={{ fontWeight: 500, fontSize: 14 }}>Manage Tags</span>
@@ -64,8 +64,8 @@ export default function TagManager({ tags, onClose, onChanged }: TagManagerProps
             placeholder="Tag name"
             style={{
               flex: 1,
-              background: 'var(--bg-primary)',
-              border: '1px solid var(--border)',
+              background: 'var(--bg-input)',
+              border: '1px solid var(--border-default)',
               color: 'var(--text-primary)',
               fontSize: 12,
               fontFamily: 'inherit',
@@ -101,7 +101,7 @@ export default function TagManager({ tags, onClose, onChanged }: TagManagerProps
           </button>
         </div>
 
-        {error && <div style={{ fontSize: 11, color: 'var(--error)', marginBottom: 8 }}>{error}</div>}
+        {error && <div style={{ fontSize: 11, color: 'var(--text-error)', marginBottom: 8 }}>{error}</div>}
 
         {/* Tag list */}
         <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -113,7 +113,7 @@ export default function TagManager({ tags, onClose, onChanged }: TagManagerProps
           {tags.map(tag => (
             <div
               key={tag.id}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border-default)' }}
             >
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: tag.color, flexShrink: 0 }} />
               <span style={{ fontSize: 13, flex: 1 }}>{tag.name}</span>

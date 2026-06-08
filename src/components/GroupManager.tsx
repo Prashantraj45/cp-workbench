@@ -81,8 +81,8 @@ export default function GroupManager({ problemId, currentGroupIds, groups, onGro
           placeholder="New group name"
           style={{
             flex: 1,
-            background: 'var(--bg-primary)',
-            border: '1px solid var(--border)',
+            background: 'var(--bg-input)',
+            border: '1px solid var(--border-default)',
             color: 'var(--text-primary)',
             fontSize: 11,
             fontFamily: 'inherit',
@@ -101,7 +101,7 @@ export default function GroupManager({ problemId, currentGroupIds, groups, onGro
         </button>
       </div>
 
-      {error && <div style={{ fontSize: 11, color: 'var(--error)', marginTop: 4 }}>{error}</div>}
+      {error && <div style={{ fontSize: 11, color: 'var(--text-error)', marginTop: 4 }}>{error}</div>}
     </div>
   );
 }
