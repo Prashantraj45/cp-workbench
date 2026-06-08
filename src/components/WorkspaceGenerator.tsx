@@ -72,12 +72,22 @@ export default function WorkspaceGenerator({ onOpen }: WorkspaceGeneratorProps) 
       let problemId: string;
 
       if (mode === 'cf') {
-        if (!cfUrl.trim().includes('codeforces.com')) {
-          throw new Error('Invalid Codeforces URL — must contain codeforces.com');
+        const url = cfUrl.trim();
+        if (url.includes('codeforces.com')) {
+          await api.setSetting('base_dir', dir);
+          const problem = await api.scaffoldCfProblem(url, dir, tmplContent);
+          problemId = problem.id;
+        } else if (url.includes('leetcode.com/problems/')) {
+          await api.setSetting('base_dir', dir);
+          const problem = await api.scaffoldLcProblem(url, dir, tmplContent);
+          problemId = problem.id;
+        } else if (url.includes('cses.fi/problemset/task/')) {
+          await api.setSetting('base_dir', dir);
+          const problem = await api.scaffoldCsesProblem(url, dir, tmplContent);
+          problemId = problem.id;
+        } else {
+          throw new Error('Unsupported URL — paste a Codeforces, LeetCode, or CSES problem URL');
         }
-        await api.setSetting('base_dir', dir);
-        const problem = await api.scaffoldCfProblem(cfUrl.trim(), dir, tmplContent);
-        problemId = problem.id;
       } else {
         if (!problemName.trim()) {
           throw new Error('Problem name is required');
@@ -191,7 +201,7 @@ export default function WorkspaceGenerator({ onOpen }: WorkspaceGeneratorProps) 
                 cursor: 'pointer',
               }}
             >
-              {m === 'cf' ? 'Codeforces URL' : 'Blank Problem'}
+              {m === 'cf' ? 'Problem URL' : 'Blank Problem'}
             </button>
           ))}
         </div>
@@ -204,7 +214,7 @@ export default function WorkspaceGenerator({ onOpen }: WorkspaceGeneratorProps) 
                 value={cfUrl}
                 onChange={(e) => setCfUrl(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-                placeholder="https://codeforces.com/contest/1234/problem/A"
+                placeholder="codeforces.com/contest/... · leetcode.com/problems/... · cses.fi/problemset/task/..."
                 style={inputStyle}
               />
             </Field>
