@@ -260,3 +260,118 @@ pub fn scaffold_blank(
 
     Ok(problem)
 }
+
+#[derive(Debug)]
+struct LcProblem {
+    slug: String,
+    title: String,
+    tags: Vec<String>,
+    sample_input: String,
+}
+
+fn parse_lc_url(url: &str) -> Option<String> {
+    url.split("leetcode.com/problems/")
+        .nth(1)
+        .and_then(|s| s.split('/').next())
+        .map(|s| s.to_string())
+        .filter(|s| !s.is_empty())
+}
+
+fn fetch_lc_problem(url: &str) -> AppResult<LcProblem> {
+    let slug = parse_lc_url(url)
+        .ok_or_else(|| AppError::Generic(format!("Invalid LeetCode URL: {}", url)))?;
+
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("Mozilla/5.0 (compatible; CP-Workbench/1.0)")
+        .timeout(std::time::Duration::from_secs(15))
+        .build()?;
+
+    let query = format!(
+        r#"{{"query": "{{ question(titleSlug: \"{}\") {{ title topicTags {{ name }} sampleTestCase }} }}"}}"#,
+        slug
+    );
+
+    let resp = client
+        .post("https://leetcode.com/graphql")
+        .header("Content-Type", "application/json")
+        .body(query)
+        .send()?;
+
+    if !resp.status().is_success() {
+        return Err(AppError::Generic(format!("LC HTTP {}", resp.status())));
+    }
+
+    let json: serde_json::Value = resp.json()?;
+    let q = &json["data"]["question"];
+
+    let title = q["title"].as_str()
+        .unwrap_or(&slug)
+        .to_string();
+
+    let tags = q["topicTags"].as_array()
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|t| t["name"].as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let sample_input = q["sampleTestCase"].as_str()
+        .unwrap_or("")
+        .to_string();
+
+    Ok(LcProblem { slug, title, tags, sample_input })
+}
+
+pub fn scaffold_lc_problem(
+    conn: &rusqlite::Connection,
+    url: &str,
+    base_dir: &Path,
+    template_content: &str,
+) -> AppResult<Problem> {
+    let lc = fetch_lc_problem(url)?;
+    let folder_name = format!("LC_{}", lc.slug);
+    let problem_path = base_dir.join(&folder_name);
+    std::fs::create_dir_all(&problem_path)?;
+
+    std::fs::write(problem_path.join("main.cpp"), template_content)?;
+    std::fs::write(problem_path.join("input.txt"), &lc.sample_input)?;
+    std::fs::write(problem_path.join("output.txt"), "")?;
+    std::fs::write(problem_path.join("notes.md"), format!("# {}\n\n{}\n", lc.title, url))?;
+
+    let metadata = serde_json::json!({
+        "title": lc.title,
+        "url": url,
+        "slug": lc.slug,
+    });
+    std::fs::write(problem_path.join("metadata.json"), serde_json::to_string_pretty(&metadata)?)?;
+
+    let problem = Problem {
+        id: folder_name.clone(),
+        name: lc.title.clone(),
+        path: problem_path.to_str().unwrap().to_string(),
+        url: Some(url.to_string()),
+        time_limit: Some(2000),
+        memory_limit: Some(256),
+        cpp_standard: "c++20".to_string(),
+        created_at: now_ms(),
+        last_opened: Some(now_ms()),
+    };
+
+    db::insert_problem(conn, &problem)?;
+
+    let tc = TestCase {
+        id: Uuid::new_v4().to_string(),
+        problem_id: folder_name.clone(),
+        name: "Sample 1".to_string(),
+        input: lc.sample_input.clone(),
+        expected: None,
+        position: 0,
+        created_at: now_ms(),
+    };
+    db::insert_test_case(conn, &tc)?;
+
+    let _ = db::insert_scraped_tags(conn, &folder_name, &lc.tags);
+
+    Ok(problem)
+}
