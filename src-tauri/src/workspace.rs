@@ -273,6 +273,7 @@ fn parse_lc_url(url: &str) -> Option<String> {
     url.split("leetcode.com/problems/")
         .nth(1)
         .and_then(|s| s.split('/').next())
+        .and_then(|s| s.split('?').next())
         .map(|s| s.to_string())
         .filter(|s| !s.is_empty())
 }
@@ -286,15 +287,17 @@ fn fetch_lc_problem(url: &str) -> AppResult<LcProblem> {
         .timeout(std::time::Duration::from_secs(15))
         .build()?;
 
-    let query = format!(
-        r#"{{"query": "{{ question(titleSlug: \"{}\") {{ title topicTags {{ name }} sampleTestCase }} }}"}}"#,
-        slug
-    );
+    let body = serde_json::json!({
+        "query": format!(
+            "{{ question(titleSlug: \"{}\") {{ title topicTags {{ name }} sampleTestCase }} }}",
+            slug
+        )
+    });
 
     let resp = client
         .post("https://leetcode.com/graphql")
-        .header("Content-Type", "application/json")
-        .body(query)
+        .header("Referer", format!("https://leetcode.com/problems/{}/", slug))
+        .json(&body)
         .send()?;
 
     if !resp.status().is_success() {
@@ -302,7 +305,17 @@ fn fetch_lc_problem(url: &str) -> AppResult<LcProblem> {
     }
 
     let json: serde_json::Value = resp.json()?;
+
+    if json["errors"].is_array() {
+        let msg = json["errors"][0]["message"].as_str().unwrap_or("GraphQL error");
+        return Err(AppError::Generic(format!("LC GraphQL error: {}", msg)));
+    }
+
     let q = &json["data"]["question"];
+
+    if q.is_null() {
+        return Err(AppError::Generic(format!("LC problem not found: {}", slug)));
+    }
 
     let title = q["title"].as_str()
         .unwrap_or(&slug)
