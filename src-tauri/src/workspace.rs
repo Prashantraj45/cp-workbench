@@ -43,6 +43,7 @@ pub struct CfProblem {
     pub time_limit_ms: Option<i64>,
     pub memory_limit_mb: Option<i64>,
     pub samples: Vec<(String, String)>, // (input, output)
+    pub tags: Vec<String>,
 }
 
 fn extract_sample_text(el: scraper::ElementRef) -> String {
@@ -128,6 +129,14 @@ pub fn fetch_cf_problem(url: &str) -> AppResult<CfProblem> {
         }
     }
 
+    // Scrape tags from .tag-box a
+    let tag_sel = Selector::parse(".tag-box a").unwrap();
+    let tags: Vec<String> = document
+        .select(&tag_sel)
+        .map(|e| e.text().collect::<String>().trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
     Ok(CfProblem {
         contest_id,
         problem_id,
@@ -135,6 +144,7 @@ pub fn fetch_cf_problem(url: &str) -> AppResult<CfProblem> {
         time_limit_ms,
         memory_limit_mb,
         samples,
+        tags,
     })
 }
 
@@ -200,6 +210,9 @@ pub fn scaffold_workspace(
         };
         db::insert_test_case(conn, &tc)?;
     }
+
+    // Attach scraped tags (silent failure per spec)
+    let _ = db::insert_scraped_tags(conn, &folder_name, &cf.tags);
 
     Ok(problem)
 }
