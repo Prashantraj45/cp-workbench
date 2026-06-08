@@ -50,3 +50,21 @@ export interface StressResult {
 export type CppStandard = 'c++17' | 'c++20' | 'c++23';
 
 export type TemplateName = 'blank_cpp17' | 'blank_cpp20' | 'codeforces' | 'atcoder' | 'fast_io' | 'pbds';
+
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  created_at: number;
+}
+
+export interface ProblemWithMeta extends Problem {
+  tags: Tag[];
+  groupIds: string[];
+  runCount: number;
+}
