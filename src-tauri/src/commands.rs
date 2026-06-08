@@ -1,6 +1,6 @@
 use crate::db;
 use crate::error::AppResult;
-use crate::models::{Problem, RunResult, StressResult, TestCase};
+use crate::models::{Group, Problem, RunResult, StressResult, Tag, TestCase};
 use crate::runner;
 use crate::workspace;
 use std::path::Path;
@@ -283,4 +283,94 @@ pub fn rename_problem(id: String, name: String) -> AppResult<()> {
     let conn = db::open()?;
     conn.execute("UPDATE problems SET name=?1 WHERE id=?2", rusqlite::params![name, id])?;
     Ok(())
+}
+
+// ── Tags ──────────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn get_tags() -> AppResult<Vec<Tag>> {
+    let conn = db::open()?;
+    db::get_all_tags(&conn)
+}
+
+#[tauri::command]
+pub fn create_tag(name: String, color: String) -> AppResult<Tag> {
+    let conn = db::open()?;
+    db::create_tag(&conn, &name, &color)
+}
+
+#[tauri::command]
+pub fn delete_tag(id: String) -> AppResult<()> {
+    let conn = db::open()?;
+    db::delete_tag(&conn, &id)
+}
+
+#[tauri::command]
+pub fn get_problem_tags(problem_id: String) -> AppResult<Vec<Tag>> {
+    let conn = db::open()?;
+    db::get_problem_tags(&conn, &problem_id)
+}
+
+#[tauri::command]
+pub fn set_problem_tags(problem_id: String, tag_ids: Vec<String>) -> AppResult<()> {
+    let conn = db::open()?;
+    db::set_problem_tags(&conn, &problem_id, &tag_ids)
+}
+
+// ── Groups ─────────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn get_groups() -> AppResult<Vec<Group>> {
+    let conn = db::open()?;
+    db::get_all_groups(&conn)
+}
+
+#[tauri::command]
+pub fn create_group(name: String) -> AppResult<Group> {
+    let conn = db::open()?;
+    db::create_group(&conn, &name)
+}
+
+#[tauri::command]
+pub fn delete_group(id: String) -> AppResult<()> {
+    let conn = db::open()?;
+    db::delete_group(&conn, &id)
+}
+
+#[tauri::command]
+pub fn rename_group(id: String, name: String) -> AppResult<()> {
+    let conn = db::open()?;
+    db::rename_group(&conn, &id, &name)
+}
+
+#[tauri::command]
+pub fn get_group_members(group_id: String) -> AppResult<Vec<String>> {
+    let conn = db::open()?;
+    db::get_group_members(&conn, &group_id)
+}
+
+#[tauri::command]
+pub fn set_group_members(group_id: String, problem_ids: Vec<String>) -> AppResult<()> {
+    let conn = db::open()?;
+    db::set_group_members(&conn, &group_id, &problem_ids)
+}
+
+#[tauri::command]
+pub fn get_run_count(problem_id: String) -> AppResult<i64> {
+    let conn = db::open()?;
+    db::get_run_count(&conn, &problem_id)
+}
+
+// ── LC / CSES scaffold ─────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn scaffold_lc_problem(url: String, base_dir: String, template: String) -> AppResult<Problem> {
+    let conn = db::open()?;
+    workspace::scaffold_lc_problem(&conn, &url, Path::new(&base_dir), &template)
+}
+
+#[tauri::command]
+pub fn scaffold_cses_problem(url: String, base_dir: String, template: String) -> AppResult<Problem> {
+    let conn = db::open()?;
+    workspace::scaffold_cses_problem(&conn, &url, Path::new(&base_dir), &template)
 }

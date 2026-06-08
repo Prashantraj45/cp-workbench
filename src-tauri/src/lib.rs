@@ -36,6 +36,20 @@ pub fn run() {
             commands::stop_process,
             commands::delete_problem,
             commands::rename_problem,
+            commands::get_tags,
+            commands::create_tag,
+            commands::delete_tag,
+            commands::get_problem_tags,
+            commands::set_problem_tags,
+            commands::get_groups,
+            commands::create_group,
+            commands::delete_group,
+            commands::rename_group,
+            commands::get_group_members,
+            commands::set_group_members,
+            commands::get_run_count,
+            commands::scaffold_lc_problem,
+            commands::scaffold_cses_problem,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
