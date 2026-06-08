@@ -68,6 +68,8 @@ export default function DataManagement({ onClose, onOpenProblem }: DataManagemen
           })
         );
 
+        if (cancelled) return;
+
         const enrichedProblems = await Promise.all(
           problems.map(async (p) => {
             const [problemTags, runCount] = await Promise.all([
@@ -90,7 +92,7 @@ export default function DataManagement({ onClose, onOpenProblem }: DataManagemen
     }
     load();
     return () => { cancelled = true; };
-  }, [problems, setTags, setGroups]);
+  }, [problems]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const platforms = ['All', 'CF', 'LC', 'CSES', 'Other'];
   const cfContests = Array.from(
@@ -146,15 +148,18 @@ export default function DataManagement({ onClose, onOpenProblem }: DataManagemen
   const refreshAfterTagChange = useCallback(async () => {
     const newTags = await api.getTags();
     setTags(newTags);
+    const allGroupMembers: Record<string, string[]> = {};
+    await Promise.all(groups.map(async g => {
+      allGroupMembers[g.id] = await api.getGroupMembers(g.id);
+    }));
     const enrichedProblems = await Promise.all(
       problems.map(async (p) => {
         const [problemTags, runCount] = await Promise.all([
           api.getProblemTags(p.id),
           api.getRunCount(p.id),
         ]);
-        const allGroupMembers = await Promise.all(groups.map(g => api.getGroupMembers(g.id)));
         const groupIds = groups
-          .filter((_, i) => allGroupMembers[i].includes(p.id))
+          .filter(g => allGroupMembers[g.id]?.includes(p.id))
           .map(g => g.id);
         return { ...p, tags: problemTags, groupIds, runCount } as ProblemWithMeta;
       })
