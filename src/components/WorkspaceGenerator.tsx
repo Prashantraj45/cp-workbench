@@ -208,7 +208,7 @@ export default function WorkspaceGenerator({ onOpen }: WorkspaceGeneratorProps) 
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {mode === 'cf' ? (
-            <Field label="Codeforces URL">
+            <Field label="Problem URL">
               <input
                 autoFocus
                 value={cfUrl}
