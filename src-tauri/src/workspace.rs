@@ -388,3 +388,94 @@ pub fn scaffold_lc_problem(
 
     Ok(problem)
 }
+
+#[derive(Debug)]
+struct CsesProblem {
+    id: String,
+    title: String,
+}
+
+fn parse_cses_url(url: &str) -> Option<String> {
+    url.split("cses.fi/problemset/task/")
+        .nth(1)
+        .and_then(|s| s.split('/').next())
+        .and_then(|s| s.split('?').next())
+        .map(|s| s.to_string())
+        .filter(|s| !s.is_empty())
+}
+
+fn fetch_cses_problem(url: &str) -> AppResult<CsesProblem> {
+    let id = parse_cses_url(url)
+        .ok_or_else(|| AppError::Generic(format!("Invalid CSES URL: {}", url)))?;
+
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("Mozilla/5.0 (compatible; CP-Workbench/1.0)")
+        .timeout(std::time::Duration::from_secs(15))
+        .build()?;
+
+    let resp = client.get(url).send()?;
+    if !resp.status().is_success() {
+        return Err(AppError::Generic(format!("CSES HTTP {}", resp.status())));
+    }
+    let html = resp.text()?;
+    let document = Html::parse_document(&html);
+
+    let title = document
+        .select(&Selector::parse("h1.title").unwrap())
+        .next()
+        .map(|e| e.text().collect::<String>().trim().to_string())
+        .unwrap_or_else(|| format!("CSES_{}", id));
+
+    Ok(CsesProblem { id, title })
+}
+
+pub fn scaffold_cses_problem(
+    conn: &rusqlite::Connection,
+    url: &str,
+    base_dir: &Path,
+    template_content: &str,
+) -> AppResult<Problem> {
+    let cses = fetch_cses_problem(url)?;
+    let folder_name = format!("CSES_{}", cses.id);
+    let problem_path = base_dir.join(&folder_name);
+    std::fs::create_dir_all(&problem_path)?;
+
+    std::fs::write(problem_path.join("main.cpp"), template_content)?;
+    std::fs::write(problem_path.join("input.txt"), "")?;
+    std::fs::write(problem_path.join("output.txt"), "")?;
+    std::fs::write(problem_path.join("notes.md"), format!("# {}\n\n{}\n", cses.title, url))?;
+
+    let metadata = serde_json::json!({
+        "title": cses.title,
+        "url": url,
+        "problem_id": cses.id,
+    });
+    std::fs::write(problem_path.join("metadata.json"), serde_json::to_string_pretty(&metadata)?)?;
+
+    let problem = Problem {
+        id: folder_name.clone(),
+        name: cses.title.clone(),
+        path: problem_path.to_str().unwrap().to_string(),
+        url: Some(url.to_string()),
+        time_limit: Some(1000),
+        memory_limit: Some(256),
+        cpp_standard: "c++20".to_string(),
+        created_at: now_ms(),
+        last_opened: Some(now_ms()),
+    };
+
+    db::insert_problem(conn, &problem)?;
+
+    let tc = TestCase {
+        id: Uuid::new_v4().to_string(),
+        problem_id: folder_name.clone(),
+        name: "Sample 1".to_string(),
+        input: String::new(),
+        expected: None,
+        position: 0,
+        created_at: now_ms(),
+    };
+    db::insert_test_case(conn, &tc)?;
+
+    Ok(problem)
+}
