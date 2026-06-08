@@ -181,7 +181,7 @@ export default function DataManagement({ onClose, onOpenProblem }: DataManagemen
   }, [setGroups]);
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', zIndex: 200 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', zIndex: 200 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <span style={{ fontWeight: 500, fontSize: 14 }}>Data &amp; History</span>
