@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Problem, TestCase, RunResult, StressResult } from '../lib/types';
+import type { Problem, TestCase, RunResult, StressResult, Tag, Group } from '../lib/types';
 
 interface AppState {
   // Current problem
@@ -29,6 +29,12 @@ interface AppState {
   // Stress test state
   stressRunning: boolean;
   stressResult: StressResult | null;
+
+  // Tags and groups (global predefined lists)
+  tags: Tag[];
+  groups: Group[];
+  setTags: (tags: Tag[]) => void;
+  setGroups: (groups: Group[]) => void;
 
   // Actions
   setCurrentProblem: (problem: Problem | null) => void;
@@ -65,6 +71,10 @@ export const useStore = create<AppState>((set) => ({
   theme: 'system',
   stressRunning: false,
   stressResult: null,
+  tags: [],
+  groups: [],
+  setTags: (tags) => set({ tags }),
+  setGroups: (groups) => set({ groups }),
 
   setCurrentProblem: (problem) => set({ currentProblem: problem }),
   setProblems: (problems) => set({ problems }),

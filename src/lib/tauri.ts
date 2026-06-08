@@ -1,6 +1,6 @@
 // Tauri v2: command args are deserialized with camelCase keys from JS → snake_case Rust params
 import { invoke } from '@tauri-apps/api/core';
-import type { Problem, TestCase, RunResult, StressResult } from './types';
+import type { Problem, TestCase, RunResult, StressResult, Tag, Group } from './types';
 
 export const api = {
   // Problems
@@ -54,4 +54,26 @@ export const api = {
   stopProcess: () => invoke<void>('stop_process'),
   deleteProblem: (id: string) => invoke<void>('delete_problem', { id }),
   renameProblem: (id: string, name: string) => invoke<void>('rename_problem', { id, name }),
+
+  // Tags
+  getTags: () => invoke<Tag[]>('get_tags'),
+  createTag: (name: string, color: string) => invoke<Tag>('create_tag', { name, color }),
+  deleteTag: (id: string) => invoke<void>('delete_tag', { id }),
+  getProblemTags: (problemId: string) => invoke<Tag[]>('get_problem_tags', { problemId }),
+  setProblemTags: (problemId: string, tagIds: string[]) => invoke<void>('set_problem_tags', { problemId, tagIds }),
+
+  // Groups
+  getGroups: () => invoke<Group[]>('get_groups'),
+  createGroup: (name: string) => invoke<Group>('create_group', { name }),
+  deleteGroup: (id: string) => invoke<void>('delete_group', { id }),
+  renameGroup: (id: string, name: string) => invoke<void>('rename_group', { id, name }),
+  getGroupMembers: (groupId: string) => invoke<string[]>('get_group_members', { groupId }),
+  setGroupMembers: (groupId: string, problemIds: string[]) => invoke<void>('set_group_members', { groupId, problemIds }),
+  getRunCount: (problemId: string) => invoke<number>('get_run_count', { problemId }),
+
+  // LC / CSES scaffold
+  scaffoldLcProblem: (url: string, baseDir: string, template: string) =>
+    invoke<Problem>('scaffold_lc_problem', { url, baseDir, template }),
+  scaffoldCsesProblem: (url: string, baseDir: string, template: string) =>
+    invoke<Problem>('scaffold_cses_problem', { url, baseDir, template }),
 };
